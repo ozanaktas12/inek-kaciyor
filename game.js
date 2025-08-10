@@ -183,9 +183,11 @@ scene("menu", () => {
   // --- Start button as a real button with proper hitbox
   const startButtonWidth = IS_MOBILE ? Math.floor(width() * 0.8) : 320;
   const startButtonHeight = IS_MOBILE ? 80 : 56;
+  const xBtn = IS_MOBILE ? (width() / 2 + 24) : (width() / 2);
+  const yBtn = IS_MOBILE ? (Y_BUTTON + height() * 0.02) : Y_BUTTON;
   const startButton = add([
     rect(startButtonWidth, startButtonHeight),
-    pos(width() / 2, Y_BUTTON),
+    pos(xBtn, yBtn),
     anchor("center"),
     area(),
     color(245, 208, 66),
@@ -197,7 +199,7 @@ scene("menu", () => {
 
   const startLabel = add([
     text("Başla", { size: 22 }),
-    pos(width() / 2, Y_BUTTON),
+    pos(xBtn, yBtn),
     anchor("center"),
     color(0, 0, 0),
     z(6),

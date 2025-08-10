@@ -1,11 +1,10 @@
 // ---- Responsive canvas boyutu
 function getCanvasSize() {
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
-  const targetAspect = 9 / 16; // dikey
-  // Yüksekliği ekrana göre seç, desktop'ta biraz daha büyük
-  const maxH = Math.floor(window.innerHeight * 0.95);
-  const baseH = isMobile ? 800 : 900;     // eski: 720
-  const H = Math.min(maxH || baseH, baseH);
+  const targetAspect = 9 / 16; // portrait
+  const screenH = Math.floor(window.innerHeight * 0.98);
+  const baseH = isMobile ? Math.min(screenH, 960) : Math.min(screenH, 1000);
+  const H = Math.max(720, baseH);
   const W = Math.round(H * targetAspect);
   return { W, H };
 }
@@ -77,9 +76,9 @@ function applyLayout() {
     imageRendering: "pixelated",
     borderRadius: "12px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-    width: "min(100vw, 600px)",  // eski: 440px
+    width: (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600) ? "100vw" : "min(100vw, 720px)",
     height: "auto",
-    maxHeight: "95vh",
+    maxHeight: "100vh",
   });
 }
 if (document.readyState === "loading") {
@@ -93,7 +92,7 @@ window.addEventListener("resize", applyLayout);
 scene("menu", () => {
   add([
     text("İnek Kaçıyor", { size: 32 }),
-    pos(center().x, center().y - 100),
+    pos(width() / 2, height() * 0.22),
     anchor("center")
   ]);
 
@@ -103,19 +102,20 @@ scene("menu", () => {
   loop(0.5, () => (caretVisible = !caretVisible));
 
   const nameBox = add([
-    rect(240, 40),
-    pos(center().x, center().y - 20),
+    rect(260, 48),
+    pos(width() / 2, height() * 0.48),
     anchor("center"),
     area(),
     color(255, 255, 255),
     outline(3, rgb(30, 122, 30)),
+    cursor("text"),
     z(5),
     "nameBox",
   ]);
 
   const namePlaceholder = add([
-    text("İsminizi yazın...", { size: 16 }),
-    pos(center().x, center().y - 20),
+    text("İsminizi yazın...", { size: 18 }),
+    pos(width() / 2, height() * 0.48),
     anchor("center"),
     color(120, 120, 120),
     z(6),
@@ -123,22 +123,16 @@ scene("menu", () => {
   ]);
 
   const nameText = add([
-    text("", { size: 16 }),
-    pos(center().x, center().y - 20),
+    text("", { size: 18 }),
+    pos(width() / 2, height() * 0.48),
     anchor("center"),
     color(0, 0, 0),
-    area(),
     z(7),
     { value: "" },
     "nameText",
   ]);
 
   onClick("nameBox", () => {
-    typingEnabled = true;
-    namePlaceholder.hidden = true;
-  });
-
-  onClick("nameText", () => {
     typingEnabled = true;
     namePlaceholder.hidden = true;
   });
@@ -172,20 +166,21 @@ scene("menu", () => {
 
   // --- Start button as a real button with proper hitbox
   const startButton = add([
-    rect(180, 46),
-    pos(center().x, center().y + 50),
+    rect(240, 56),
+    pos(width() / 2, height() * 0.70),
     anchor("center"),
     area(),
     color(255, 255, 0),
     outline(3, rgb(20, 20, 20)),
+    cursor("pointer"),
     z(5),
     "startBtn",
     { hover: false },
   ]);
 
   const startLabel = add([
-    text("Başla", { size: 20 }),
-    pos(center().x, center().y + 50),
+    text("Başla", { size: 22 }),
+    pos(width() / 2, height() * 0.70),
     anchor("center"),
     color(0, 0, 0),
     z(6),

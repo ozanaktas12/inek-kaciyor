@@ -72,14 +72,28 @@ function applyLayout() {
       "radial-gradient(circle at 30% 80%, rgba(255,255,255,0.1), transparent 35%)," +
       "linear-gradient(135deg, #1e7a1e 0%, #2ea62e 50%, #1e7a1e 100%)",
   });
-  Object.assign(c.style, {
-    imageRendering: "pixelated",
-    borderRadius: "12px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-    width: (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600) ? "100vw" : "min(100vw, 720px)",
-    height: "auto",
-    maxHeight: "100vh",
-  });
+  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
+
+  if (isMobile) {
+    // MOBILE: match CSS size to Kaboom internal pixels to fix touch hitbox offset
+    Object.assign(c.style, {
+      imageRendering: "pixelated",
+      borderRadius: "12px",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+      width: `${K_WIDTH}px`,
+      height: `${K_HEIGHT}px`,
+    });
+  } else {
+    // DESKTOP: keep responsive layout
+    Object.assign(c.style, {
+      imageRendering: "pixelated",
+      borderRadius: "12px",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+      width: "min(100vw, 720px)",
+      height: "auto",
+      maxHeight: "100vh",
+    });
+  }
 }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", applyLayout);

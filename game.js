@@ -90,14 +90,13 @@ window.addEventListener("resize", applyLayout);
 
 // ---- Menü sahnesi
 scene("menu", () => {
-  // Professional, clean spacing (proportional)
-  const Y_TITLE = height() * 0.24;
-  const Y_INPUT = height() * 0.44;
-  const Y_BUTTON = height() * 0.62;
-  const Y_HISCORES_TITLE = height() * 0.74;
-  const Y_HISCORES_LIST = height() * 0.78;
-
   const IS_MOBILE = ("ontouchstart" in window) || window.innerWidth < 600;
+  // Professional, clean spacing (proportional)
+  const Y_TITLE = IS_MOBILE ? height() * 0.35 : height() * 0.24;
+  const Y_INPUT = IS_MOBILE ? height() * 0.44 : height() * 0.44; // unchanged for desktop
+  const Y_BUTTON = IS_MOBILE ? height() * 0.52 : height() * 0.62;
+  const Y_HISCORES_TITLE = IS_MOBILE ? height() * 0.68 : height() * 0.74;
+  const Y_HISCORES_LIST = IS_MOBILE ? height() * 0.73 : height() * 0.78;
 
   add([
     text("İnek Kaçıyor", { size: 34 }),
@@ -183,11 +182,9 @@ scene("menu", () => {
   // --- Start button as a real button with proper hitbox
   const startButtonWidth = IS_MOBILE ? Math.floor(width() * 0.8) : 320;
   const startButtonHeight = IS_MOBILE ? 80 : 56;
-  const xBtn = IS_MOBILE ? (width() / 2 + 24) : (width() / 2);
-  const yBtn = IS_MOBILE ? (Y_BUTTON + height() * 0.02) : Y_BUTTON;
   const startButton = add([
     rect(startButtonWidth, startButtonHeight),
-    pos(xBtn, yBtn),
+    pos(width() / 2, Y_BUTTON),
     anchor("center"),
     area(),
     color(245, 208, 66),
@@ -199,7 +196,7 @@ scene("menu", () => {
 
   const startLabel = add([
     text("Başla", { size: 22 }),
-    pos(xBtn, yBtn),
+    pos(width() / 2, Y_BUTTON),
     anchor("center"),
     color(0, 0, 0),
     z(6),

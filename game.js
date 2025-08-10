@@ -97,6 +97,8 @@ scene("menu", () => {
   const Y_HISCORES_TITLE = height() * 0.74;
   const Y_HISCORES_LIST = height() * 0.78;
 
+  const IS_MOBILE = ("ontouchstart" in window) || window.innerWidth < 600;
+
   add([
     text("İnek Kaçıyor", { size: 34 }),
     pos(width() / 2, Y_TITLE),
@@ -104,113 +106,85 @@ scene("menu", () => {
     z(10),
   ]);
 
-  // --- Name input as clickable box
-  let typingEnabled = false;
-  let caretVisible = true;
-  loop(0.5, () => (caretVisible = !caretVisible));
+  // --- Name input as clickable box (desktop only)
+  if (!IS_MOBILE) {
+    let typingEnabled = false;
+    let caretVisible = true;
+    loop(0.5, () => (caretVisible = !caretVisible));
 
-  // Mobil input desteği (sadece dokunmatik cihazlarda)
-  let mobileInput;
-  if ("ontouchstart" in window) {
-    mobileInput = document.createElement("input");
-    mobileInput.type = "text";
-    mobileInput.maxLength = 12;
-    Object.assign(mobileInput.style, {
-      position: "fixed",
-      top: "-1000px",
-      opacity: 0
+    const nameBox = add([
+      rect(260, 48),
+      pos(width() / 2, Y_INPUT),
+      anchor("center"),
+      area(),
+      color(255, 255, 255),
+      outline(4, rgb(255, 255, 255)),
+      z(5),
+      "nameBox",
+    ]);
+
+    const namePlaceholder = add([
+      text("İsminizi yazın...", { size: 18 }),
+      pos(width() / 2, Y_INPUT),
+      anchor("center"),
+      color(120, 120, 120),
+      z(6),
+      "namePlaceholder",
+    ]);
+
+    const nameText = add([
+      text("", { size: 18 }),
+      pos(width() / 2, Y_INPUT),
+      anchor("center"),
+      color(0, 0, 0),
+      z(7),
+      { value: "" },
+      "nameText",
+    ]);
+
+    onClick("nameBox", () => {
+      typingEnabled = true;
+      namePlaceholder.hidden = true;
     });
-    document.body.appendChild(mobileInput);
 
-    mobileInput.addEventListener("input", () => {
-      const v = mobileInput.value;
-      nameText.value = v;
-      nameText.text = caretVisible ? v + "|" : v;
-    });
-
-    mobileInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        playerName = nameText.value.trim() || "Misafir";
-        go("main");
+    onUpdate("nameBox", (b) => {
+      if (b.outline) {
+        b.outline.color = rgb(255, 255, 255);
       }
     });
-  }
 
-  const nameBox = add([
-    rect(260, 48),
-    pos(width() / 2, Y_INPUT),
-    anchor("center"),
-    area(),
-    color(255, 255, 255),
-    outline(4, rgb(255, 255, 255)),
-    z(5),
-    "nameBox",
-  ]);
+    onKeyPress((ch) => {
+      if (!typingEnabled) return;
+      if (ch === "backspace") {
+        nameText.value = nameText.value.slice(0, -1);
+      } else if (ch === "enter") {
+        startGame();
+        return;
+      } else if (ch.length === 1 && nameText.value.length < 12) {
+        nameText.value += ch;
+      }
+      nameText.text = caretVisible ? nameText.value + "|" : nameText.value;
+      playerName = nameText.value || "Misafir";
+    });
 
-  const namePlaceholder = add([
-    text("İsminizi yazın...", { size: 18 }),
-    pos(width() / 2, Y_INPUT),
-    anchor("center"),
-    color(120, 120, 120),
-    z(6),
-    "namePlaceholder",
-  ]);
-
-  const nameText = add([
-    text("", { size: 18 }),
-    pos(width() / 2, Y_INPUT),
-    anchor("center"),
-    color(0, 0, 0),
-    z(7),
-    { value: "" },
-    "nameText",
-  ]);
-
-  onClick("nameBox", () => {
-    typingEnabled = true;
-    namePlaceholder.hidden = true;
-    if ("ontouchstart" in window && mobileInput) {
-      mobileInput.value = nameText.value || "";
-      mobileInput.focus();
-    }
-  });
-
-  onUpdate("nameBox", (b) => {
-    if (b.outline) {
-      b.outline.color = rgb(255, 255, 255);
-    }
-  });
-
-  onKeyPress((ch) => {
-    if (!typingEnabled) return;
-    if (ch === "backspace") {
-      nameText.value = nameText.value.slice(0, -1);
-    } else if (ch === "enter") {
-      startGame();
-      return;
-    } else if (ch.length === 1 && nameText.value.length < 12) {
-      nameText.value += ch;
-    }
-    nameText.text = caretVisible ? nameText.value + "|" : nameText.value;
-    playerName = nameText.value || "Misafir";
-  });
-
-  onKeyPress("escape", () => {
-    typingEnabled = false;
-    if (!nameText.value) namePlaceholder.hidden = false;
-    nameText.text = nameText.value;
-  });
+    onKeyPress("escape", () => {
+      typingEnabled = false;
+      if (!nameText.value) namePlaceholder.hidden = false;
+      nameText.text = nameText.value;
+    });
+  } // end desktop-only name input
 
   function startGame() {
-    playerName = (nameText.value && nameText.value.trim()) ? nameText.value.trim() : "Misafir";
+    const nm = (!IS_MOBILE && typeof nameText !== "undefined" && nameText.value && nameText.value.trim()) ? nameText.value.trim() : "";
+    playerName = nm || "Misafir";
     go("main");
   }
 
   // --- Start button as a real button with proper hitbox
-  const startButtonWidth = ("ontouchstart" in window) ? 360 : 320;
+  const startButtonWidth = IS_MOBILE ? Math.floor(width() * 0.8) : 320;
+  const startButtonHeight = IS_MOBILE ? 80 : 56;
   const startButton = add([
-    rect(startButtonWidth, 56),
+    rect(startButtonWidth, startButtonHeight),
     pos(width() / 2, Y_BUTTON),
     anchor("center"),
     area(),
@@ -233,13 +207,15 @@ scene("menu", () => {
     startLabel.pos = startButton.pos.clone();
   });
 
-  add([
-    text("Enter ile de başlayabilirsin", { size: 12 }),
-    pos(width() / 2, Y_BUTTON + 38),
-    anchor("center"),
-    color(220, 220, 220),
-    z(6),
-  ]);
+  if (!IS_MOBILE) {
+    add([
+      text("Enter ile de başlayabilirsin", { size: 12 }),
+      pos(width() / 2, Y_BUTTON + 38),
+      anchor("center"),
+      color(220, 220, 220),
+      z(6),
+    ]);
+  }
 
   onUpdate("startBtn", (b) => {
     const hovered = (typeof b.isHovering === "function") ? b.isHovering() : false;

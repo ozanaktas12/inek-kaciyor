@@ -1,6 +1,19 @@
+// ---- Responsive canvas boyutu
+function getCanvasSize() {
+  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
+  const targetAspect = 9 / 16; // dikey
+  // Yüksekliği ekrana göre seç, desktop'ta biraz daha büyük
+  const maxH = Math.floor(window.innerHeight * 0.95);
+  const baseH = isMobile ? 800 : 900;     // eski: 720
+  const H = Math.min(maxH || baseH, baseH);
+  const W = Math.round(H * targetAspect);
+  return { W, H };
+}
+const { W: K_WIDTH, H: K_HEIGHT } = getCanvasSize();
+
 kaboom({
-  width: 400,
-  height: 720,
+  width: K_WIDTH,   // eski: 400
+  height: K_HEIGHT, // eski: 720
   background: [34, 139, 34],
 });
 
@@ -64,7 +77,7 @@ function applyLayout() {
     imageRendering: "pixelated",
     borderRadius: "12px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-    width: "min(100vw, 440px)",
+    width: "min(100vw, 600px)",  // eski: 440px
     height: "auto",
     maxHeight: "95vh",
   });
@@ -300,17 +313,28 @@ scene("main", () => {
   let canShoot = true;
 
   function spawnBullet() {
-    add([
-      rect(BULLET_SIZE.x, BULLET_SIZE.y),
-      pos(player.pos.x, player.pos.y - 20),
-      anchor("center"),
-      area(),
-      move(UP, BULLET_SPEED),
-      offscreen({ destroy: true }),
-      color(255, 255, 0),
-      "bullet",
-    ]);
-  }
+  // Flash efekti
+  add([
+    rect(6, 6),
+    pos(player.pos.x, player.pos.y - 30),
+    anchor("center"),
+    color(255, 255, 150),
+    lifespan(0.06, { fade: 0.06 }), // 0.06 sn sonra kaybolur
+    z(1200),
+  ]);
+
+  // Mermi
+  add([
+    rect(BULLET_SIZE.x, BULLET_SIZE.y),
+    pos(player.pos.x, player.pos.y - 20),
+    anchor("center"),
+    area(),
+    move(UP, BULLET_SPEED),
+    offscreen({ destroy: true }),
+    color(255, 255, 0),
+    "bullet",
+  ]);
+}
 
   function shoot() {
     if (!canShoot) return;
@@ -340,42 +364,75 @@ scene("main", () => {
 
   // ---- Mobil dokunmatik kontroller
   function setupMobileControls() {
-    const c = document.querySelector("canvas");
-    if (!("ontouchstart" in window) || !c) return;
-    let lastTap = 0;
-    c.addEventListener("touchstart", (e) => {
-      const t = e.touches[0];
-      if (!t) return;
-      const r = c.getBoundingClientRect();
-      const x = t.clientX - r.left;
-      const y = t.clientY - r.top;
+  const c = document.querySelector("canvas");
+  if (!("ontouchstart" in window) || !c) return;
 
-      // Üst bölgeye dokunma => ateş
-      if (y < r.height * 0.35) {
-        shoot();
-      } else {
-        // Alt bölgede sol/sağ yarı => şerit değiştir
-        if (x < r.width / 2) {
-          if (player.lane > 0) {
-            player.lane--;
-            player.pos.x = laneX(player.lane);
-          }
-        } else {
-          if (player.lane < LANES - 1) {
-            player.lane++;
-            player.pos.x = laneX(player.lane);
-          }
-        }
-      }
+  const r = () => c.getBoundingClientRect();
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let autofireTimer = null;
 
-      // Çift dokunma da ateş etsin
-      const now = Date.now();
-      if (now - lastTap < 300) {
-        shoot();
-      }
-      lastTap = now;
-    });
+  function startAutofire() {
+    if (autofireTimer) return;
+    // SHOOT_COOLDOWN'dan biraz daha hızlı hissettirmek için ufak çarpan
+    autofireTimer = setInterval(() => shoot(), Math.max(150, SHOOT_COOLDOWN * 800));
   }
+  function stopAutofire() {
+    if (autofireTimer) {
+      clearInterval(autofireTimer);
+      autofireTimer = null;
+    }
+  }
+
+  c.addEventListener("touchstart", (e) => {
+    const t = e.touches[0];
+    if (!t) return;
+    const box = r();
+    const x = t.clientX - box.left;
+    const y = t.clientY - box.top;
+
+    touchStartX = x;
+    touchStartY = y;
+
+    // Ekranı 3'e böl: sol = sola geç, orta = ateş, sağ = sağa geç
+    const third = box.width / 3;
+
+    if (y < box.height * 0.3) {
+      // üst %30: direkt ateş + basılı tutarsan yarı otomatik ateş
+      shoot();
+      startAutofire();
+    } else if (x < third) {
+      if (player.lane > 0) { player.lane--; player.pos.x = laneX(player.lane); }
+    } else if (x > 2 * third) {
+      if (player.lane < LANES - 1) { player.lane++; player.pos.x = laneX(player.lane); }
+    } else {
+      // orta şerit: tek dokunuş = ateş
+      shoot();
+      startAutofire();
+    }
+  }, { passive: true });
+
+  c.addEventListener("touchmove", (e) => {
+    if (!e.touches[0]) return;
+    const box = r();
+    const x = e.touches[0].clientX - box.left;
+    const dx = x - touchStartX;
+
+    // Swipe ile hızlı şerit değiştirme
+    const SWIPE_THRESHOLD = 40;
+    if (dx > SWIPE_THRESHOLD) {
+      touchStartX = x; // art arda swipe'lara izin
+      if (player.lane < LANES - 1) { player.lane++; player.pos.x = laneX(player.lane); }
+    } else if (dx < -SWIPE_THRESHOLD) {
+      touchStartX = x;
+      if (player.lane > 0) { player.lane--; player.pos.x = laneX(player.lane); }
+    }
+  }, { passive: true });
+
+  ["touchend", "touchcancel"].forEach(evt =>
+    c.addEventListener(evt, () => stopAutofire(), { passive: true })
+  );
+}
   setupMobileControls();
 
   // Engel/ödül/kalkan/çarpan üret

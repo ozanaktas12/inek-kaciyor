@@ -90,10 +90,18 @@ window.addEventListener("resize", applyLayout);
 
 // ---- Menü sahnesi
 scene("menu", () => {
+  // Professional, clean spacing (proportional)
+  const Y_TITLE = height() * 0.24;
+  const Y_INPUT = height() * 0.44;
+  const Y_BUTTON = height() * 0.62;
+  const Y_HISCORES_TITLE = height() * 0.74;
+  const Y_HISCORES_LIST = height() * 0.78;
+
   add([
-    text("İnek Kaçıyor", { size: 32 }),
-    pos(width() / 2, height() * 0.22),
-    anchor("center")
+    text("İnek Kaçıyor", { size: 34 }),
+    pos(width() / 2, Y_TITLE),
+    anchor("center"),
+    z(10),
   ]);
 
   // --- Name input as clickable box
@@ -103,18 +111,18 @@ scene("menu", () => {
 
   const nameBox = add([
     rect(260, 48),
-    pos(width() / 2, height() * 0.48),
+    pos(width() / 2, Y_INPUT),
     anchor("center"),
     area(),
     color(255, 255, 255),
-    outline(3, rgb(30, 122, 30)),
+    outline(4, rgb(255, 255, 255)),
     z(5),
     "nameBox",
   ]);
 
   const namePlaceholder = add([
     text("İsminizi yazın...", { size: 18 }),
-    pos(width() / 2, height() * 0.48),
+    pos(width() / 2, Y_INPUT),
     anchor("center"),
     color(120, 120, 120),
     z(6),
@@ -123,7 +131,7 @@ scene("menu", () => {
 
   const nameText = add([
     text("", { size: 18 }),
-    pos(width() / 2, height() * 0.48),
+    pos(width() / 2, Y_INPUT),
     anchor("center"),
     color(0, 0, 0),
     z(7),
@@ -137,10 +145,8 @@ scene("menu", () => {
   });
 
   onUpdate("nameBox", (b) => {
-    // Hover feedback for name input box (kaboom v3000: isHovering())
-    const hovered = (typeof b.isHovering === "function") ? b.isHovering() : false;
     if (b.outline) {
-      b.outline.color = hovered ? rgb(46, 166, 46) : rgb(30, 122, 30);
+      b.outline.color = rgb(255, 255, 255);
     }
   });
 
@@ -149,7 +155,8 @@ scene("menu", () => {
     if (ch === "backspace") {
       nameText.value = nameText.value.slice(0, -1);
     } else if (ch === "enter") {
-      // ignore enter here
+      startGame();
+      return;
     } else if (ch.length === 1 && nameText.value.length < 12) {
       nameText.value += ch;
     }
@@ -163,13 +170,18 @@ scene("menu", () => {
     nameText.text = nameText.value;
   });
 
+  function startGame() {
+    playerName = (nameText.value && nameText.value.trim()) ? nameText.value.trim() : "Misafir";
+    go("main");
+  }
+
   // --- Start button as a real button with proper hitbox
   const startButton = add([
-    rect(240, 56),
-    pos(width() / 2, height() * 0.70),
+    rect(320, 56),
+    pos(width() / 2, Y_BUTTON),
     anchor("center"),
     area(),
-    color(255, 255, 0),
+    color(245, 208, 66),
     outline(3, rgb(20, 20, 20)),
     z(5),
     "startBtn",
@@ -178,48 +190,84 @@ scene("menu", () => {
 
   const startLabel = add([
     text("Başla", { size: 22 }),
-    pos(width() / 2, height() * 0.70),
+    pos(width() / 2, Y_BUTTON),
     anchor("center"),
     color(0, 0, 0),
     z(6),
   ]);
 
+  onUpdate(() => {
+    startLabel.pos = startButton.pos.clone();
+  });
+
+  add([
+    text("Enter ile de başlayabilirsin", { size: 12 }),
+    pos(width() / 2, Y_BUTTON + 38),
+    anchor("center"),
+    color(220, 220, 220),
+    z(6),
+  ]);
+
   onUpdate("startBtn", (b) => {
     const hovered = (typeof b.isHovering === "function") ? b.isHovering() : false;
-    b.color = hovered ? rgb(255, 230, 0) : rgb(255, 255, 0);
-    startLabel.scale = hovered ? vec2(1.05) : vec2(1);
+    b.color = hovered ? rgb(250, 215, 70) : rgb(245, 208, 66); // soft yellow
   });
 
-  onClick("startBtn", () => {
-    playerName = (nameText.value && nameText.value.trim()) ? nameText.value.trim() : "Misafir";
-    go("main");
-  });
+  onClick("startBtn", startGame);
 
   onKeyPress("enter", () => {
-    // Allow Enter to start the game as well
-    if (!isScene("menu")) return;
-    playerName = (nameText.value && nameText.value.trim()) ? nameText.value.trim() : "Misafir";
-    go("main");
+    startGame();
   });
 
   // Leaderboard göster
   add([
     text("En Yüksek Skorlar", { size: 18 }),
-    pos(center().x, center().y + 100),
-    anchor("center")
+    pos(width() / 2, Y_HISCORES_TITLE),
+    anchor("center"),
+    z(10),
   ]);
 
   leaderboard.slice(0, 5).forEach((entry, i) => {
     add([
-      text(`${i+1}. ${entry.name}: ${entry.score}`, { size: 14 }),
-      pos(center().x, center().y + 130 + i * 20),
-      anchor("center")
+      text(`${i + 1}. ${entry.name}: ${entry.score}`, { size: 14 }),
+      pos(width() / 2, Y_HISCORES_LIST + i * 20),
+      anchor("center"),
+      z(10),
     ]);
   });
 });
 
 // ---- Main sahnesi
 scene("main", () => {
+  // Subtle procedural grass background (drawn behind lanes)
+  function addGrassTuft(x, y, scale = 1) {
+    const baseColor = [40 + rand(0, 20), 140 + rand(0, 30), 40 + rand(0, 20)];
+    const group = [];
+    for (let i = -2; i <= 2; i++) {
+      group.push(add([
+        rect(3, 12 * scale),
+        pos(x + i * 3, y + rand(-2, 2)),
+        color(baseColor[0], baseColor[1], baseColor[2]),
+        z(-20),
+        { sway: rand(0.8, 1.3) },
+      ]));
+    }
+    group.forEach((blade, idx) => {
+      blade.onUpdate(() => {
+        blade.pos.x += Math.sin(time() * blade.sway + idx) * 0.05;
+      });
+    });
+  }
+
+  function createGrassBackground() {
+    for (let y = 30; y < height(); y += 70) {
+      for (let x = 20; x < width(); x += 80) {
+        addGrassTuft(x + rand(-10, 10), y + rand(-8, 8), rand(0.9, 1.3));
+      }
+    }
+  }
+
+  createGrassBackground();
   let score = 0;
   const startTime = time();
   onUpdate(() => {

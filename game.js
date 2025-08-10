@@ -108,7 +108,6 @@ scene("menu", () => {
     area(),
     color(255, 255, 255),
     outline(3, rgb(30, 122, 30)),
-    cursor("text"),
     z(5),
     "nameBox",
   ]);
@@ -172,7 +171,6 @@ scene("menu", () => {
     area(),
     color(255, 255, 0),
     outline(3, rgb(20, 20, 20)),
-    cursor("pointer"),
     z(5),
     "startBtn",
     { hover: false },

@@ -109,6 +109,34 @@ scene("menu", () => {
   let caretVisible = true;
   loop(0.5, () => (caretVisible = !caretVisible));
 
+  // Mobil input desteği (sadece dokunmatik cihazlarda)
+  let mobileInput;
+  if ("ontouchstart" in window) {
+    mobileInput = document.createElement("input");
+    mobileInput.type = "text";
+    mobileInput.maxLength = 12;
+    Object.assign(mobileInput.style, {
+      position: "fixed",
+      top: "-1000px",
+      opacity: 0
+    });
+    document.body.appendChild(mobileInput);
+
+    mobileInput.addEventListener("input", () => {
+      const v = mobileInput.value;
+      nameText.value = v;
+      nameText.text = caretVisible ? v + "|" : v;
+    });
+
+    mobileInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        playerName = nameText.value.trim() || "Misafir";
+        go("main");
+      }
+    });
+  }
+
   const nameBox = add([
     rect(260, 48),
     pos(width() / 2, Y_INPUT),
@@ -142,6 +170,10 @@ scene("menu", () => {
   onClick("nameBox", () => {
     typingEnabled = true;
     namePlaceholder.hidden = true;
+    if ("ontouchstart" in window && mobileInput) {
+      mobileInput.value = nameText.value || "";
+      mobileInput.focus();
+    }
   });
 
   onUpdate("nameBox", (b) => {
@@ -176,8 +208,9 @@ scene("menu", () => {
   }
 
   // --- Start button as a real button with proper hitbox
+  const startButtonWidth = ("ontouchstart" in window) ? 360 : 320;
   const startButton = add([
-    rect(320, 56),
+    rect(startButtonWidth, 56),
     pos(width() / 2, Y_BUTTON),
     anchor("center"),
     area(),

@@ -1,9 +1,25 @@
 // ---- Responsive canvas boyutu
 function getCanvasSize() {
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
-  const targetAspect = 9 / 16; // portrait
+  const targetAspect = 9 / 16; // portrait (width / height)
+
+  if (isMobile) {
+    // 1) Start from viewport width (~96% of screen width)
+    let W = Math.floor(window.innerWidth * 0.96);
+    // 2) Compute height from aspect ratio: height = width / (width/height)
+    let H = Math.floor(W / targetAspect);
+    // 3) Cap height to ~96% of viewport height; re-compute width if needed
+    const maxH = Math.floor(window.innerHeight * 0.96);
+    if (H > maxH) {
+      H = maxH;
+      W = Math.floor(H * targetAspect);
+    }
+    return { W, H };
+  }
+
+  // Desktop behavior (unchanged): base on viewport height
   const screenH = Math.floor(window.innerHeight * 0.98);
-  const baseH = isMobile ? Math.min(screenH, 960) : Math.min(screenH, 1000);
+  const baseH = Math.min(screenH, 1000);
   const H = Math.max(720, baseH);
   const W = Math.round(H * targetAspect);
   return { W, H };

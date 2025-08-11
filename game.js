@@ -277,6 +277,16 @@ scene("menu", () => {
 
 // ---- Main sahnesi
 scene("main", () => {
+  // --- Mobile-aware sizing & performance knobs (desktop unaffected)
+  const IS_MOBILE_MAIN = ("ontouchstart" in window) || window.innerWidth < 600;
+  const COW_SCALE_M = IS_MOBILE_MAIN ? 0.06 : COW_SCALE;          // cow bigger on mobile
+  const OBSTACLE_SCALE_M = IS_MOBILE_MAIN ? 0.40 : OBSTACLE_SCALE; // fences bigger
+  const HAY_SCALE_M = IS_MOBILE_MAIN ? 0.56 : HAY_SCALE;           // hay bigger
+
+  // grass density & sway (lighter on mobile)
+  const GRASS_SWAY = IS_MOBILE_MAIN ? 0.02 : 0.05; // movement amplitude
+  const YSTEP = IS_MOBILE_MAIN ? 90 : 70;          // vertical spacing between tufts
+  const XSTEP = IS_MOBILE_MAIN ? 110 : 80;         // horizontal spacing between tufts
   // Subtle procedural grass background (drawn behind lanes)
   function addGrassTuft(x, y, scale = 1) {
     const baseColor = [40 + rand(0, 20), 140 + rand(0, 30), 40 + rand(0, 20)];
@@ -292,14 +302,14 @@ scene("main", () => {
     }
     group.forEach((blade, idx) => {
       blade.onUpdate(() => {
-        blade.pos.x += Math.sin(time() * blade.sway + idx) * 0.05;
+        blade.pos.x += Math.sin(time() * blade.sway + idx) * GRASS_SWAY;
       });
     });
   }
 
   function createGrassBackground() {
-    for (let y = 30; y < height(); y += 70) {
-      for (let x = 20; x < width(); x += 80) {
+    for (let y = 30; y < height(); y += YSTEP) {
+      for (let x = 20; x < width(); x += XSTEP) {
         addGrassTuft(x + rand(-10, 10), y + rand(-8, 8), rand(0.9, 1.3));
       }
     }
@@ -364,10 +374,10 @@ scene("main", () => {
 
   const player = add([
     sprite("cow"),
-    pos(laneX(1), height() - 80),
+    pos(laneX(1), IS_MOBILE_MAIN ? height() - 120 : height() - 80),
     area(),
     anchor("center"),
-    scale(COW_SCALE),
+    scale(COW_SCALE_M),
     z(1000),
     opacity(1),
     "player",
@@ -531,7 +541,7 @@ scene("main", () => {
       type = "multiplier";      // ~%5 (2x puan)
     }
 
-    const sc = (type === "fence") ? OBSTACLE_SCALE : (type === "hay" ? HAY_SCALE : 1);
+    const sc = (type === "fence") ? OBSTACLE_SCALE_M : (type === "hay" ? HAY_SCALE_M : 1);
 
     let comps = [
       anchor("center"),
@@ -544,11 +554,11 @@ scene("main", () => {
 
     if (type === "fence") {
       comps.unshift(sprite("fence"));
-      comps.push(scale(OBSTACLE_SCALE));
+      comps.push(scale(OBSTACLE_SCALE_M));
       comps.push(area());
     } else if (type === "hay") {
       comps.unshift(sprite("hay"));
-      comps.push(scale(sc));
+      comps.push(scale(HAY_SCALE_M));
       comps.push(area({ scale: 0.75 }));
     } else if (type === "shield") {
       // Basit görsel: turkuaz kare power-up

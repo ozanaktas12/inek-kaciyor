@@ -35,6 +35,31 @@ kaboom({
 let playerName = "";
 let leaderboard = JSON.parse(localStorage.getItem("leaderboard") || "[]");
 
+// ---- Music state
+let bgmHandle = null;
+let isMuted = false;
+try {
+  const saved = localStorage.getItem("muted");
+  if (saved !== null) isMuted = JSON.parse(saved);
+} catch {}
+
+function setMuted(m) {
+  isMuted = m;
+  try { localStorage.setItem("muted", JSON.stringify(isMuted)); } catch {}
+  if (bgmHandle && !bgmHandle.stopped) {
+    bgmHandle.volume = isMuted ? 0 : 0.45;
+  }
+}
+
+function ensureBGMStarted() {
+  // Başla’ya basılınca bir kere başlat; mute ise sessiz başla.
+  if (!bgmHandle || bgmHandle.stopped) {
+    bgmHandle = play("bgm", { loop: true, volume: isMuted ? 0 : 0.45 });
+  } else {
+    bgmHandle.volume = isMuted ? 0 : 0.45;
+  }
+}
+
 // ---- Ayarlar
 const LANES = 4;
 const laneW = width() / LANES;
@@ -71,6 +96,8 @@ function laneX(lane) {
 loadSprite("cow", "assets/inek_oyun_gpt.png");
 loadSprite("fence", "assets/cit_oyun_gpt.png");
 loadSprite("hay", "assets/saman_oyun_gpt.png");
+// Background music
+loadSound("bgm", "assets/audio/bgm.mp3");
 
 // ---- Sayfa yerleşimi ve görünüm (canvas'ı ortala, arka planı şekillendir, mobil boyutlandırma)
 function applyLayout() {
@@ -83,10 +110,11 @@ function applyLayout() {
     display: "grid",
     placeItems: "center",
     background:
-      "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15), transparent 40%)," +
-      "radial-gradient(circle at 80% 30%, rgba(255,255,255,0.12), transparent 45%)," +
-      "radial-gradient(circle at 30% 80%, rgba(255,255,255,0.1), transparent 35%)," +
-      "linear-gradient(135deg, #1e7a1e 0%, #2ea62e 50%, #1e7a1e 100%)",
+      "radial-gradient(circle at 30% 30%, rgba(0,0,50,0.32), transparent 40%)," +
+      "radial-gradient(circle at 70% 20%, rgba(50,0,80,0.22), transparent 50%)," +
+      "radial-gradient(circle at 50% 80%, rgba(0,50,80,0.18), transparent 40%)," +
+      "radial-gradient(circle at 80% 80%, rgba(50,50,80,0.11), transparent 35%)," +
+      "linear-gradient(135deg, #0d0d1a 0%, #1a1a2e 40%, #23233a 80%, #181828 100%)",
   });
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
 
@@ -127,6 +155,14 @@ scene("menu", () => {
   const Y_BUTTON = IS_MOBILE ? height() * 0.52 : height() * 0.62;
   const Y_HISCORES_TITLE = IS_MOBILE ? height() * 0.68 : height() * 0.74;
   const Y_HISCORES_LIST = IS_MOBILE ? height() * 0.73 : height() * 0.78;
+  const Y_MUTE = IS_MOBILE ? height() * 0.58 : height() * 0.56;
+
+  function muteLabelText() {
+    return isMuted ? "🔇 Mute açık" : "🔊 Müzik açık";
+  }
+  function muteLabelColor() {
+    return isMuted ? rgb(180, 180, 180) : rgb(0, 0, 0);
+  }
 
   add([
     text("İnek Kaçıyor", { size: 34 }),
@@ -203,9 +239,52 @@ scene("menu", () => {
     });
   } // end desktop-only name input
 
+
+  // --- Mute toggle (oyuna başlamadan önce aç/kapat)
+  const muteBtnW = IS_MOBILE ? Math.floor(width() * 0.5) : 220;
+  const muteBtnH = IS_MOBILE ? 56 : 44;
+  const muteBtn = add([
+    rect(muteBtnW, muteBtnH),
+    pos(width() / 2, Y_MUTE),
+    anchor("center"),
+    area(),
+    color(230, 230, 230),
+    outline(3, rgb(20, 20, 20)),
+    z(5),
+    "muteBtn",
+  ]);
+
+  const muteText = add([
+    text(muteLabelText(), { size: 18 }),
+    pos(width() / 2, Y_MUTE),
+    anchor("center"),
+    color(muteLabelColor()),
+    z(6),
+    "muteText",
+  ]);
+
+  onUpdate("muteBtn", (b) => {
+    // Hover efekti (desktop)
+    const hovered = (typeof b.isHovering === "function") ? b.isHovering() : false;
+    b.color = hovered ? rgb(245, 245, 245) : rgb(230, 230, 230);
+    // Label pozisyonunu senkron tut
+    muteText.pos = b.pos.clone();
+  });
+
+  function toggleMute() {
+    setMuted(!isMuted);
+    muteText.text = muteLabelText();
+    muteText.color = muteLabelColor();
+  }
+
+  onClick("muteBtn", toggleMute);
+  onKeyPress("m", toggleMute);
+
   function startGame() {
     const nm = (!IS_MOBILE && typeof nameText !== "undefined" && nameText.value && nameText.value.trim()) ? nameText.value.trim() : "";
     playerName = nm || "Misafir";
+    // Müziği yalnızca oyun başlarken başlat; mute ise sessiz başlar
+    ensureBGMStarted();
     go("main");
   }
 
@@ -277,6 +356,8 @@ scene("menu", () => {
 
 // ---- Main sahnesi
 scene("main", () => {
+  // Oyun yeniden başladığında (R ile) BGM'yi tekrar başlat (mute durumuna saygılı)
+  ensureBGMStarted();
   // --- Mobile-aware sizing & performance knobs (desktop unaffected)
   const IS_MOBILE_MAIN = ("ontouchstart" in window) || window.innerWidth < 600;
   const COW_SCALE_M = IS_MOBILE_MAIN ? 0.06 : COW_SCALE;          // cow bigger on mobile
@@ -635,6 +716,12 @@ scene("main", () => {
 
 // ---- Game over sahnesi
 scene("gameover", (finalScore) => {
+  // Oyun bittiğinde müziği kes
+  if (bgmHandle && !bgmHandle.stopped) {
+    bgmHandle.stop();
+    bgmHandle = null;
+  }
+
   leaderboard.push({ name: playerName, score: finalScore });
   leaderboard.sort((a,b) => b.score - a.score);
   localStorage.setItem("leaderboard", JSON.stringify(leaderboard));

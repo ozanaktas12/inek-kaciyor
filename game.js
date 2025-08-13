@@ -29,7 +29,7 @@ const { W: K_WIDTH, H: K_HEIGHT } = getCanvasSize();
 kaboom({
   width: K_WIDTH,   // eski: 400
   height: K_HEIGHT, // eski: 720
-  background: [34, 139, 34],
+  background: [13, 13, 26], // koyu gece mavisi
 });
 
 let playerName = "";
@@ -65,9 +65,9 @@ const LANES = 4;
 const laneW = width() / LANES;
 
 // Boyut ve hız ayarları
-const COW_SCALE = 0.04;
-const OBSTACLE_SCALE = 0.32;
-const HAY_SCALE = 0.45;
+const COW_SCALE = 0.06;
+const OBSTACLE_SCALE = 0.29;
+const HAY_SCALE = 0.33;
 // Hız ayarları
 const BASE_FALL_SPEED = 500;
 let fallSpeed = BASE_FALL_SPEED;
@@ -82,11 +82,13 @@ const SHOOT_COOLDOWN = 0.9; // saniye
 const SHIELD_DURATION = 3.0; // saniye
 const SHIELD_CHANCE = 0.05; // her spawn döngüsünde kalkan çıkma olasılığı
 const SHIELD_SIZE = vec2(22, 22);
+const SHIELD_SPRITE_SCALE = 0.12;   // mavi logo biraz büyüt
 
 // Puan çarpanı (multiplier) ayarları
 const MULTIPLIER_DURATION = 7.5; // saniye
 const MULTIPLIER_VALUE = 2;      // 2x puan
 const MULT_SIZE = vec2(22, 22);
+const MULT_SPRITE_SCALE   = 0.06;   // mor kristali küçült
 
 function laneX(lane) {
   return lane * laneW + laneW / 2;
@@ -96,6 +98,9 @@ function laneX(lane) {
 loadSprite("cow", "assets/inek_oyun_gpt.png");
 loadSprite("fence", "assets/cit_oyun_gpt.png");
 loadSprite("hay", "assets/saman_oyun_gpt.png");
+// Yeni bonus sprite'ları
+loadSprite("imm_logo", "assets/logo_transparent_gpt.png");                 // ölümsüzlük (mavi logo)
+loadSprite("bonus_crystal", "assets/purple_bonus_crystal_transparent_gpt.png"); // 2x (mor kristal)
 // Background music
 loadSound("bgm", "assets/audio/bgm.mp3");
 
@@ -360,43 +365,55 @@ scene("main", () => {
   ensureBGMStarted();
   // --- Mobile-aware sizing & performance knobs (desktop unaffected)
   const IS_MOBILE_MAIN = ("ontouchstart" in window) || window.innerWidth < 600;
-  const COW_SCALE_M = IS_MOBILE_MAIN ? 0.06 : COW_SCALE;          // cow bigger on mobile
+  const COW_SCALE_M = IS_MOBILE_MAIN ? 0.08 : COW_SCALE;          // cow bigger on mobile
   const OBSTACLE_SCALE_M = IS_MOBILE_MAIN ? 0.40 : OBSTACLE_SCALE; // fences bigger
   const HAY_SCALE_M = IS_MOBILE_MAIN ? 0.56 : HAY_SCALE;           // hay bigger
 
-  // grass density & sway (lighter on mobile)
-  const GRASS_SWAY = IS_MOBILE_MAIN ? 0.02 : 0.05; // movement amplitude
-  const YSTEP = IS_MOBILE_MAIN ? 90 : 70;          // vertical spacing between tufts
-  const XSTEP = IS_MOBILE_MAIN ? 110 : 80;         // horizontal spacing between tufts
-  // Subtle procedural grass background (drawn behind lanes)
-  function addGrassTuft(x, y, scale = 1) {
-    const baseColor = [40 + rand(0, 20), 140 + rand(0, 30), 40 + rand(0, 20)];
-    const group = [];
-    for (let i = -2; i <= 2; i++) {
-      group.push(add([
-        rect(3, 12 * scale),
-        pos(x + i * 3, y + rand(-2, 2)),
-        color(baseColor[0], baseColor[1], baseColor[2]),
-        z(-20),
-        { sway: rand(0.8, 1.3) },
-      ]));
-    }
-    group.forEach((blade, idx) => {
-      blade.onUpdate(() => {
-        blade.pos.x += Math.sin(time() * blade.sway + idx) * GRASS_SWAY;
-      });
-    });
-  }
-
-  function createGrassBackground() {
-    for (let y = 30; y < height(); y += YSTEP) {
-      for (let x = 20; x < width(); x += XSTEP) {
-        addGrassTuft(x + rand(-10, 10), y + rand(-8, 8), rand(0.9, 1.3));
-      }
+  // ==== Gece şehir arka planı (neon, soğuk tonlar)
+function addBuilding(x, w, h, baseY = height()) {
+  const b = add([
+    rect(w, h),
+    pos(x, baseY - h),
+    color(22 + rand(0, 10), 24 + rand(0, 12), 40 + rand(0, 16)), // koyu mavi-gri
+    z(-30),
+    opacity(0.9),
+  ]);
+  // pencere dokusu (hafif neon)
+  const cols = Math.max(2, Math.floor(w / 18));
+  const rows = Math.max(3, Math.floor(h / 28));
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (Math.random() < 0.35) continue; // bazı pencereler kapalı
+      add([
+        rect(10, 6),
+        pos(x + 5 + i * (w / cols), baseY - h + 6 + j * (h / rows)),
+        color(120, 200 + rand(0, 55), 255),
+        opacity(0.10 + rand(0, 0.05)), // daha silik
+        z(-36), // katmanları şeritlerin çok arkasına al
+      ]);
     }
   }
+  return b;
+}
 
-  createGrassBackground();
+function createCityBackground() {
+  // ufuk çizgisi parıltısı
+  add([rect(width(), 2), pos(0, height() * 0.72), color(80, 200, 255), opacity(0.08), z(-35)]);
+  // uzak katman
+  for (let i = 0; i < 7; i++) {
+    const w = rand(60, 140), h = rand(height() * 0.25, height() * 0.55);
+    addBuilding(rand(-30, width() - 30), w, h);
+  }
+  // yakın katman
+  for (let i = 0; i < 5; i++) {
+    const w = rand(80, 180), h = rand(height() * 0.35, height() * 0.7);
+    const b = addBuilding(rand(-20, width() - 20), w, h);
+    b.opacity = 0.95;
+  }
+  // hafif gece sisi
+  add([rect(width(), height()), pos(0, 0), color(20, 20, 40), opacity(0.05), z(-31)]);
+}
+createCityBackground();
   let score = 0;
   const startTime = time();
   onUpdate(() => {
@@ -421,34 +438,26 @@ scene("main", () => {
     scoreLabel.text = String(score);
   }
 
-  // Şerit zeminleri ve ayırıcı çizgiler
-  for (let i = 0; i < LANES; i++) {
-    add([
-      rect(laneW - 6, height()),
-      pos(i * laneW + 3, 0),
-      color(46, 160, 46),
-      z(-10),
-    ]);
-  }
-  for (let i = 1; i < LANES; i++) {
-    add([
-      rect(4, height()),
-      pos(i * laneW - 2, 0),
-      color(255, 255, 255),
-      z(-5),
-    ]);
-  }
+  // Şerit zeminleri (koyu asfalt) ve neon ayırıcı çizgiler
+for (let i = 0; i < LANES; i++) {
+  add([rect(laneW - 6, height()), pos(i * laneW + 3, 0), color(28, 28, 40), opacity(1), z(-10)]);
+}
+for (let i = 1; i < LANES; i++) {
+  add([rect(3, height()), pos(i * laneW - 1.5, 0), color(80, 200, 255), opacity(0.35), z(-5)]);
+}
 
   const scoreLabel = add([
-    text("0"),
-    pos(10, 10),
-  ]);
+  text("0", { size: 18 }),
+  pos(12, 10),
+  color(180, 230, 255), // soft neon mavi
+  z(1002),
+]);
 
   const multLabel = add([
     text("2x"),
     pos(width() - 12, 10),
     anchor("topright"),
-    color(255, 255, 0),
+    color(255, 60, 200), // neon magenta
     z(1001),
   ]);
   multLabel.hidden = true;
@@ -501,7 +510,7 @@ scene("main", () => {
     area(),
     move(UP, BULLET_SPEED),
     offscreen({ destroy: true }),
-    color(255, 255, 0),
+    color(255, 60, 200), // neon magenta
     "bullet",
   ]);
 }
@@ -642,15 +651,18 @@ scene("main", () => {
       comps.push(scale(HAY_SCALE_M));
       comps.push(area({ scale: 0.75 }));
     } else if (type === "shield") {
-      // Basit görsel: turkuaz kare power-up
-      comps.unshift(rect(SHIELD_SIZE.x, SHIELD_SIZE.y));
-      comps.push(color(0, 200, 255));
-      comps.push(area());
+      // Ölümsüzlük: mavi logo sprite
+      comps.unshift(sprite("imm_logo"));
+      comps.push(scale(SHIELD_SPRITE_SCALE));
+      comps.push(opacity(1));
+      comps.push(outline(2, rgb(120, 240, 255)));
+      comps.push(area({ scale: 0.85 }));
     } else if (type === "multiplier") {
-      // Mor bir kare olarak 2x puan güçlendirici
-      comps.unshift(rect(MULT_SIZE.x, MULT_SIZE.y));
-      comps.push(color(180, 0, 200));
-      comps.push(area());
+      // 2x Puan: mor kristal sprite
+      comps.unshift(sprite("bonus_crystal"));
+      comps.push(scale(MULT_SPRITE_SCALE));
+      comps.push(opacity(1));
+      comps.push(area({ scale: 0.85 }));
     }
 
     const obj = add(comps);
@@ -716,11 +728,6 @@ scene("main", () => {
 
 // ---- Game over sahnesi
 scene("gameover", (finalScore) => {
-  // Oyun bittiğinde müziği kes
-  if (bgmHandle && !bgmHandle.stopped) {
-    bgmHandle.stop();
-    bgmHandle = null;
-  }
 
   leaderboard.push({ name: playerName, score: finalScore });
   leaderboard.sort((a,b) => b.score - a.score);

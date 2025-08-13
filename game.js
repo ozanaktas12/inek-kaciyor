@@ -747,16 +747,3 @@ scene("gameover", (finalScore) => {
 
 // Başlat
 go("menu");
-
-// Mobil cihazlarda dokunmatik kontroller kullanılabilir.
-  // --- (Optional safety) One-time mobile unlock for audio gesture
-  let __audioUnlocked = false;
-  function __unlockAudio() {
-    if (__audioUnlocked) return;
-    __audioUnlocked = true;
-    ensureBGMStarted();
-    document.removeEventListener('touchstart', __unlockAudio, { passive: true });
-    document.removeEventListener('pointerdown', __unlockAudio, { passive: true });
-  }
-  document.addEventListener('touchstart', __unlockAudio, { passive: true, once: true });
-  document.addEventListener('pointerdown', __unlockAudio, { passive: true, once: true });

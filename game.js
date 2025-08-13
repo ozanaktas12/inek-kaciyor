@@ -288,8 +288,6 @@ scene("menu", () => {
   function startGame() {
     const nm = (!IS_MOBILE && typeof nameText !== "undefined" && nameText.value && nameText.value.trim()) ? nameText.value.trim() : "";
     playerName = nm || "Misafir";
-    // Müziği yalnızca oyun başlarken başlat; mute ise sessiz başlar
-    ensureBGMStarted();
     go("main");
   }
 
@@ -335,9 +333,13 @@ scene("menu", () => {
     b.color = hovered ? rgb(250, 215, 70) : rgb(245, 208, 66); // soft yellow
   });
 
-  onClick("startBtn", startGame);
+  onClick("startBtn", () => {
+    ensureBGMStarted();
+    startGame();
+  });
 
   onKeyPress("enter", () => {
+    ensureBGMStarted();
     startGame();
   });
 
@@ -747,3 +749,14 @@ scene("gameover", (finalScore) => {
 go("menu");
 
 // Mobil cihazlarda dokunmatik kontroller kullanılabilir.
+  // --- (Optional safety) One-time mobile unlock for audio gesture
+  let __audioUnlocked = false;
+  function __unlockAudio() {
+    if (__audioUnlocked) return;
+    __audioUnlocked = true;
+    ensureBGMStarted();
+    document.removeEventListener('touchstart', __unlockAudio, { passive: true });
+    document.removeEventListener('pointerdown', __unlockAudio, { passive: true });
+  }
+  document.addEventListener('touchstart', __unlockAudio, { passive: true, once: true });
+  document.addEventListener('pointerdown', __unlockAudio, { passive: true, once: true });

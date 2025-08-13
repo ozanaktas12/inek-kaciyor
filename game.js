@@ -163,14 +163,14 @@ scene("menu", () => {
   const Y_MUTE = IS_MOBILE ? height() * 0.58 : height() * 0.56;
 
   function muteLabelText() {
-    return isMuted ? "🔇 Mute açık" : "🔊 Müzik açık";
+    return isMuted ? "🔇 Mute off" : "🔊 mute on";
   }
   function muteLabelColor() {
     return isMuted ? rgb(180, 180, 180) : rgb(0, 0, 0);
   }
 
   add([
-    text("İnek Kaçıyor", { size: 34 }),
+    text("Mission Cowpossible", { size: 34 }),
     pos(width() / 2, Y_TITLE),
     anchor("center"),
     z(10),
@@ -194,7 +194,7 @@ scene("menu", () => {
     ]);
 
     const namePlaceholder = add([
-      text("İsminizi yazın...", { size: 18 }),
+      text("Add your name :", { size: 18 }),
       pos(width() / 2, Y_INPUT),
       anchor("center"),
       color(120, 120, 120),
@@ -307,7 +307,7 @@ scene("menu", () => {
   ]);
 
   const startLabel = add([
-    text("Başla", { size: 22 }),
+    text("start", { size: 22 }),
     pos(width() / 2, Y_BUTTON),
     anchor("center"),
     color(0, 0, 0),
@@ -320,7 +320,7 @@ scene("menu", () => {
 
   if (!IS_MOBILE) {
     add([
-      text("Enter ile de başlayabilirsin", { size: 12 }),
+      text("You can also start with Enter", { size: 12 }),
       pos(width() / 2, Y_BUTTON + 38),
       anchor("center"),
       color(220, 220, 220),
@@ -345,7 +345,7 @@ scene("menu", () => {
 
   // Leaderboard göster
   add([
-    text("En Yüksek Skorlar", { size: 18 }),
+    text("The Highest Scores :", { size: 18 }),
     pos(width() / 2, Y_HISCORES_TITLE),
     anchor("center"),
     z(10),
@@ -735,7 +735,7 @@ scene("gameover", (finalScore) => {
   leaderboard.sort((a,b) => b.score - a.score);
   localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
   add([
-    text(`Skor: ${finalScore}\nR - Yeniden Oyna`),
+    text(`Score: ${finalScore}\nR - Play again`),
     pos(center()),
     anchor("center")
   ]);

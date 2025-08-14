@@ -18,6 +18,9 @@ window.addEventListener("touchstart", () => {
     }
   } catch {}
 }, { once: true, passive: true });
+
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+const IS_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 // ---- Responsive canvas boyutu
 function getCanvasSize() {
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
@@ -76,6 +79,7 @@ function setMuted(m) {
 }
 
 function ensureBGMStarted() {
+  if (IS_ANDROID) return; // Android'de müzik tamamen devre dışı
   // Başla’ya basılınca bir kere başlat; mute ise sessiz başla.
   if (!bgmHandle || bgmHandle.stopped) {
     bgmHandle = play("bgm", { loop: true, volume: isMuted ? 0 : 0.45 });
@@ -126,7 +130,9 @@ loadSprite("hay", "assets/saman_oyun_gpt.png");
 loadSprite("imm_logo", "assets/logo_transparent_gpt.png");                 // ölümsüzlük (mavi logo)
 loadSprite("bonus_crystal", "assets/purple_bonus_crystal_transparent_gpt.png"); // 2x (mor kristal)
 // Background music
-loadSound("bgm", "assets/audio/bgm.mp3");
+if (!IS_ANDROID) {
+  loadSound("bgm", "assets/audio/bgm.mp3");
+}
 
 // ---- Sayfa yerleşimi ve görünüm (canvas'ı ortala, arka planı şekillendir, mobil boyutlandırma)
 function applyLayout() {
@@ -178,6 +184,7 @@ window.addEventListener("resize", applyLayout);
 // ---- Menü sahnesi
 scene("menu", () => {
   const IS_MOBILE = ("ontouchstart" in window) || window.innerWidth < 600;
+  const SHOW_MUTE = !IS_ANDROID; // iOS & desktop: göster, Android: gizle
   // Professional, clean spacing (proportional)
   const Y_TITLE = IS_MOBILE ? height() * 0.35 : height() * 0.24;
   const Y_INPUT = IS_MOBILE ? height() * 0.44 : height() * 0.44; // unchanged for desktop
@@ -269,6 +276,7 @@ scene("menu", () => {
   } // end desktop-only name input
 
 
+  if (SHOW_MUTE) {
   // --- Mute toggle (oyuna başlamadan önce aç/kapat)
   const muteBtnW = IS_MOBILE ? Math.floor(width() * 0.5) : 220;
   const muteBtnH = IS_MOBILE ? 56 : 44;
@@ -308,6 +316,7 @@ scene("menu", () => {
 
   onClick("muteBtn", toggleMute);
   onKeyPress("m", toggleMute);
+}
 
   function startGame() {
     const nm = (!IS_MOBILE && typeof nameText !== "undefined" && nameText.value && nameText.value.trim()) ? nameText.value.trim() : "";

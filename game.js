@@ -1,3 +1,23 @@
+// ---- Safe storage (Android WebView/Incognito guard) & audio unlock
+const storage = {
+  get(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+  },
+  set(key, val) {
+    try { localStorage.setItem(key, val); } catch {}
+  }
+};
+
+// Bazı Android tarayıcıları ses için kullanıcı jesti ister; bir kez kilidi aç.
+window.addEventListener("touchstart", () => {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      const ctx = new AC();
+      if (ctx && typeof ctx.resume === "function") ctx.resume().catch(() => {});
+    }
+  } catch {}
+}, { once: true, passive: true });
 // ---- Responsive canvas boyutu
 function getCanvasSize() {
   const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 600;
@@ -33,19 +53,23 @@ kaboom({
 });
 
 let playerName = "";
-let leaderboard = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+let leaderboard = [];
+try {
+  const raw = storage.get("leaderboard");
+  leaderboard = raw ? JSON.parse(raw) : [];
+} catch { leaderboard = []; }
 
 // ---- Music state
 let bgmHandle = null;
 let isMuted = false;
 try {
-  const saved = localStorage.getItem("muted");
+  const saved = storage.get("muted");
   if (saved !== null) isMuted = JSON.parse(saved);
 } catch {}
 
 function setMuted(m) {
   isMuted = m;
-  try { localStorage.setItem("muted", JSON.stringify(isMuted)); } catch {}
+  try { storage.set("muted", JSON.stringify(isMuted)); } catch {}
   if (bgmHandle && !bgmHandle.stopped) {
     bgmHandle.volume = isMuted ? 0 : 0.45;
   }
@@ -234,7 +258,7 @@ scene("menu", () => {
         nameText.value += ch;
       }
       nameText.text = caretVisible ? nameText.value + "|" : nameText.value;
-      playerName = nameText.value || "Misafir";
+      playerName = nameText.value || "Nameless";
     });
 
     onKeyPress("escape", () => {
@@ -287,7 +311,7 @@ scene("menu", () => {
 
   function startGame() {
     const nm = (!IS_MOBILE && typeof nameText !== "undefined" && nameText.value && nameText.value.trim()) ? nameText.value.trim() : "";
-    playerName = nm || "Misafir";
+    playerName = nm || "Nameless";
     go("main");
   }
 
@@ -733,7 +757,7 @@ scene("gameover", (finalScore) => {
 
   leaderboard.push({ name: playerName, score: finalScore });
   leaderboard.sort((a,b) => b.score - a.score);
-  localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+  storage.set("leaderboard", JSON.stringify(leaderboard));
   add([
     text(`Score: ${finalScore}\nR - Play again`),
     pos(center()),

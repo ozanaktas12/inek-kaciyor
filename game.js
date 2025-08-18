@@ -49,13 +49,51 @@ function getCanvasSize() {
 }
 const { W: K_WIDTH, H: K_HEIGHT } = getCanvasSize();
 
+
 kaboom({
   width: K_WIDTH,   // eski: 400
   height: K_HEIGHT, // eski: 720
   background: [13, 13, 26], // koyu gece mavisi
 });
 
+/* ==== GLOBAL LEADERBOARD (very basic REST) ==== */
+const API_BASE = "http://localhost:8020"; // sonra deploy adresinle değiştireceksin
+
+async function postScore(name, score) {
+  try {
+    await fetch(`${API_BASE}/score`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, score }),
+      keepalive: true, // tab kapanırken de gönderme şansı
+    });
+  } catch (e) {
+    console.warn("postScore failed", e);
+  }
+}
+
+async function loadTop(limit = 5) {
+  try {
+    const res = await fetch(`${API_BASE}/top?limit=${limit}`);
+    if (!res.ok) throw new Error("fetch top failed");
+    return await res.json(); // { rows: [{name, score, ts}, ...] }
+  } catch (e) {
+    console.warn("loadTop failed", e);
+    return { rows: [] };
+  }
+}
+/* =============================================== */
+
 let playerName = "";
+try {
+  const savedName = storage.get("playerName");
+  if (savedName && typeof savedName === "string") playerName = savedName;
+} catch {}
+
+function setPlayerName(nm) {
+  playerName = (nm || "").trim();
+  try { storage.set("playerName", playerName); } catch {}
+}
 let leaderboard = [];
 try {
   const raw = storage.get("leaderboard");
@@ -243,6 +281,13 @@ scene("menu", () => {
       "nameText",
     ]);
 
+    // Prefill with saved name if available
+    if (playerName) {
+      nameText.value = playerName;
+      nameText.text = playerName;
+      namePlaceholder.hidden = true;
+    }
+
     onClick("nameBox", () => {
       typingEnabled = true;
       namePlaceholder.hidden = true;
@@ -265,7 +310,7 @@ scene("menu", () => {
         nameText.value += ch;
       }
       nameText.text = caretVisible ? nameText.value + "|" : nameText.value;
-      playerName = nameText.value || "Nameless";
+      playerName = nameText.value || "Nameless"; // keep global in sync while typing
     });
 
     onKeyPress("escape", () => {
@@ -319,8 +364,10 @@ scene("menu", () => {
 }
 
   function startGame() {
-    const nm = (!IS_MOBILE && typeof nameText !== "undefined" && nameText.value && nameText.value.trim()) ? nameText.value.trim() : "";
-    playerName = nm || "Nameless";
+    const nm = (!IS_MOBILE && typeof nameText !== "undefined" && nameText.value && nameText.value.trim())
+      ? nameText.value.trim()
+      : playerName;
+    setPlayerName(nm || "Nameless");
     go("main");
   }
 
@@ -384,13 +431,27 @@ scene("menu", () => {
     z(10),
   ]);
 
-  leaderboard.slice(0, 5).forEach((entry, i) => {
-    add([
-      text(`${i + 1}. ${entry.name}: ${entry.score}`, { size: 14 }),
-      pos(width() / 2, Y_HISCORES_LIST + i * 20),
-      anchor("center"),
-      z(10),
-    ]);
+  const loadingText = add([
+    text("Loading...", { size: 14 }),
+    pos(width() / 2, Y_HISCORES_LIST),
+    anchor("center"),
+    z(10),
+  ]);
+
+  loadTop(5).then(({ rows }) => {
+    loadingText.destroy();
+    const list = rows && rows.length ? rows : [];
+    list.slice(0, 5).forEach((entry, i) => {
+      add([
+        text(`${i + 1}. ${entry.name ?? "Player"}: ${entry.score ?? 0}`, { size: 14 }),
+        pos(width() / 2, Y_HISCORES_LIST + i * 20),
+        anchor("center"),
+        z(10),
+      ]);
+    });
+  }).catch(() => {
+    // sessizce kalsın; hata olursa Loading yazısı dursun istemiyorsan:
+    // loadingText.text = "No data";
   });
 });
 
@@ -763,10 +824,7 @@ for (let i = 1; i < LANES; i++) {
 
 // ---- Game over sahnesi
 scene("gameover", (finalScore) => {
-
-  leaderboard.push({ name: playerName, score: finalScore });
-  leaderboard.sort((a,b) => b.score - a.score);
-  storage.set("leaderboard", JSON.stringify(leaderboard));
+  postScore(playerName || "Player", finalScore);
   add([
     text(`Score: ${finalScore}\nR - Play again`),
     pos(center()),

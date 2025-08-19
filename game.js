@@ -57,7 +57,7 @@ kaboom({
 });
 
 /* ==== GLOBAL LEADERBOARD (very basic REST) ==== */
-const API_BASE = "http://localhost:8020"; // sonra deploy adresinle değiştireceksin
+const API_BASE = "https://mission-cowpossible.onrender.com"; // sonra deploy adresinle değiştireceksin
 
 async function postScore(name, score) {
   try {

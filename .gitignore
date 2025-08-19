@@ -15,7 +15,8 @@ __pycache__/
 /global-scoreboard/venv/
 global-scoreboard/__pycache__/
 global-scoreboard/*.pyc
-global-scoreboard/scores.db    # veritabanını repoya koyma
+global-scoreboard/scores.db    
+# veritabanını repoya koyma
 global-scoreboard/.env
 
 # Ortak gizli dosyalar
@@ -27,3 +28,6 @@ node_modules/
 dist/
 build/
 *.log
+
+**/__pycache__/
+**/*.pyc

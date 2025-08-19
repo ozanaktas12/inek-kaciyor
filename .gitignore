@@ -1,0 +1,29 @@
+# Mac / OS
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Python genel (her yerde sanal ortam ve cache'ler)
+**/.venv/
+**/venv/
+__pycache__/
+*.pyc
+
+# Backend (global-scoreboard)
+/global-scoreboard/venv/
+global-scoreboard/__pycache__/
+global-scoreboard/*.pyc
+global-scoreboard/scores.db    # veritabanını repoya koyma
+global-scoreboard/.env
+
+# Ortak gizli dosyalar
+.env
+.env.*
+
+# Web / log (ileride lazım olabilir)
+node_modules/
+dist/
+build/
+*.log

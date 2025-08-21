@@ -56,33 +56,34 @@ kaboom({
   background: [13, 13, 26], // koyu gece mavisi
 });
 
-/* ==== GLOBAL LEADERBOARD (very basic REST) ==== */
-const API_BASE = "https://mission-cowpossible.onrender.com"; // sonra deploy adresinle değiştireceksin
+/* ==== LOCAL-ONLY SCOREBOARD (per device) ==== */
+const LOCAL_SCORES_KEY = "myScores"; // per-device
+const LOCAL_MAX_ROWS = 10;
 
-async function postScore(name, score) {
+function loadMyScores() {
   try {
-    await fetch(`${API_BASE}/score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, score }),
-      keepalive: true, // tab kapanırken de gönderme şansı
-    });
-  } catch (e) {
-    console.warn("postScore failed", e);
+    const raw = storage.get(LOCAL_SCORES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
   }
 }
 
-async function loadTop(limit = 5) {
-  try {
-    const res = await fetch(`${API_BASE}/top?limit=${limit}`);
-    if (!res.ok) throw new Error("fetch top failed");
-    return await res.json(); // { rows: [{name, score, ts}, ...] }
-  } catch (e) {
-    console.warn("loadTop failed", e);
-    return { rows: [] };
-  }
+function saveMyScores(rows) {
+  try { storage.set(LOCAL_SCORES_KEY, JSON.stringify(rows)); } catch {}
 }
-/* =============================================== */
+
+function addMyScore(name, score) {
+  const rows = loadMyScores();
+  rows.push({ name: (name || "Player").slice(0, 20), score: Number(score) || 0, ts: Date.now() });
+  // Sort: highest score first; tie-breaker = older first
+  rows.sort((a, b) => (b.score - a.score) || (a.ts - b.ts));
+  const trimmed = rows.slice(0, LOCAL_MAX_ROWS);
+  saveMyScores(trimmed);
+  return trimmed;
+}
+/* ============================================= */
 
 let playerName = "";
 try {
@@ -94,11 +95,7 @@ function setPlayerName(nm) {
   playerName = (nm || "").trim();
   try { storage.set("playerName", playerName); } catch {}
 }
-let leaderboard = [];
-try {
-  const raw = storage.get("leaderboard");
-  leaderboard = raw ? JSON.parse(raw) : [];
-} catch { leaderboard = []; }
+
 
 // ---- Music state
 let bgmHandle = null;
@@ -239,7 +236,7 @@ scene("menu", () => {
   }
 
   add([
-    text("Mission Cowpossible", { size: 34 }),
+    text("LamumuPossible", { size: 34 }),
     pos(width() / 2, Y_TITLE),
     anchor("center"),
     z(10),
@@ -425,23 +422,23 @@ scene("menu", () => {
 
   // Leaderboard göster
   add([
-    text("The Highest Scores :", { size: 18 }),
+    text("Your Best Scores:", { size: 18 }),
     pos(width() / 2, Y_HISCORES_TITLE),
     anchor("center"),
     z(10),
   ]);
 
-  const loadingText = add([
-    text("Loading...", { size: 14 }),
-    pos(width() / 2, Y_HISCORES_LIST),
-    anchor("center"),
-    z(10),
-  ]);
-
-  loadTop(5).then(({ rows }) => {
-    loadingText.destroy();
-    const list = rows && rows.length ? rows : [];
-    list.slice(0, 5).forEach((entry, i) => {
+  // Local per-device highscores
+  const localRows = loadMyScores();
+  if (!localRows.length) {
+    add([
+      text("No scores yet — play a round!", { size: 14 }),
+      pos(width() / 2, Y_HISCORES_LIST),
+      anchor("center"),
+      z(10),
+    ]);
+  } else {
+    localRows.slice(0, 5).forEach((entry, i) => {
       add([
         text(`${i + 1}. ${entry.name ?? "Player"}: ${entry.score ?? 0}`, { size: 14 }),
         pos(width() / 2, Y_HISCORES_LIST + i * 20),
@@ -449,10 +446,7 @@ scene("menu", () => {
         z(10),
       ]);
     });
-  }).catch(() => {
-    // sessizce kalsın; hata olursa Loading yazısı dursun istemiyorsan:
-    // loadingText.text = "No data";
-  });
+  }
 });
 
 // ---- Main sahnesi
@@ -824,7 +818,7 @@ for (let i = 1; i < LANES; i++) {
 
 // ---- Game over sahnesi
 scene("gameover", (finalScore) => {
-  postScore(playerName || "Player", finalScore);
+  addMyScore(playerName || "Player", finalScore);
   add([
     text(`Score: ${finalScore}\nR - Play again`),
     pos(center()),
